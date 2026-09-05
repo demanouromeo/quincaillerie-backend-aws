@@ -16,7 +16,10 @@ RUN ./mvnw -B -DskipTests package -q && \
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN groupadd --system --gid 1000 spring && useradd --system --uid 1000 --gid spring spring
+# Pas d'UID/GID fixe : la valeur 1000 n'etait necessaire que pour le
+# securityContext.runAsUser Kubernetes de l'ancien design EKS (abandonne), et
+# entrait en conflit avec le GID 1000 deja pris par defaut sur l'image de base.
+RUN groupadd --system spring && useradd --system --gid spring spring
 COPY --from=build /app/app.jar app.jar
 RUN chown spring:spring app.jar
 USER spring
