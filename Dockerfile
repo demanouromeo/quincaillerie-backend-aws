@@ -15,10 +15,17 @@ RUN ./mvnw -B -DskipTests package -q && \
 # --- Etape 2 : image d'execution ---
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/app.jar app.jar
 
-# Railway fournit PORT dynamiquement (voir application.properties) ; 8080
-# reste la valeur par defaut hors Railway.
+RUN groupadd --system --gid 1000 spring && useradd --system --uid 1000 --gid spring spring
+COPY --from=build /app/app.jar app.jar
+RUN chown spring:spring app.jar
+USER spring
+
+# Railway fournit PORT/SERVER_PORT dynamiquement (voir application.properties) ;
+# 8080 reste la valeur par defaut (utilisee sur l'EC2, voir infra/terraform).
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# `docker run --restart unless-stopped` (voir templates/deploy-backend.sh.tftpl)
+# relance le conteneur s'il crashe ; /actuator/health reste dispo pour vos
+# propres verifications manuelles (curl depuis l'instance).
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
